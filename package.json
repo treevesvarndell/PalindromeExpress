@@ -1,0 +1,26 @@
+{
+	"name": "PalindromeApp",
+	"version": "1.0.0",
+	"description": "Stores palindromes for a configurable length of time",
+	"keywords": [
+		"palindrome",
+		"react"
+	],
+	"scripts": {
+		"start": "nodemon src/app.js",
+		"test": "mocha test/test.js"
+	},
+	"url": "https://github.com/treevesvarndell/PalindromeExpress",
+	"license": "MIT",
+	"dependencies": {
+		"express": "4.16.0",
+		"body-parser": "1.18.2"
+	},
+	"devDependencies": {
+		"mocha": "^4.0.1",
+		"chai": "^4.1.2",
+		"chai-http": "^3.0.0",
+		"nodemon": "^1.12.1"
+	},
+	"main": "src/app.js"
+}
