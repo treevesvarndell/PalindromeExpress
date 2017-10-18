@@ -1,10 +1,11 @@
 {
-	"name": "PalindromeApp",
+	"name": "PalindromesApp",
 	"version": "1.0.0",
-	"description": "Stores palindromes for a configurable length of time",
+	"description": "Stores up to 10 palindromes for a configurable length of time",
 	"keywords": [
 		"palindrome",
-		"react"
+		"mocha",
+		"chai"
 	],
 	"scripts": {
 		"start": "nodemon src/app.js",

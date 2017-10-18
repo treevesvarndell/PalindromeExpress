@@ -9,12 +9,13 @@ app.use(bodyParser.text())
 
 // Routing
 app.post('/palindromes', (req, res) => { 
+	res.setHeader('Content-Type', 'application/json');
 	if (req.get('content-type') === 'text/plain') {
 		if (app.store.add(req.body)) {
-			res.sendStatus('201')
+    		res.send(JSON.stringify(true, null, 3));
 		}
 		else {
-			res.sendStatus('422')
+    		res.send(JSON.stringify(false, null, 3));
 		}
 	}
 	else {

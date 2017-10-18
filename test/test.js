@@ -6,8 +6,7 @@ const sinon = require('sinon')
 const eventually = require('mocha-eventually')
 const shallowDeepEqual = require('chai-shallow-deep-equal')
 
-const expect = chai.expect;
-
+const expect = chai.expect
 chai.use(chaiHttp)
 chai.use(shallowDeepEqual)
 
@@ -16,7 +15,7 @@ const createServer = require('../src/server').createServer
 const interval = 1000
 const timeout = 2000 
 
-describe('Palindrome Server', () => {
+describe('Server', () => {
 	let app = createServer(timeout, interval)
 	app.listen(8001)
 	
@@ -25,13 +24,26 @@ describe('Palindrome Server', () => {
 			app.store.clearAll()
 		})
 		
-		it('returns 201 Created if text/plain and is palindrome', (done) => {
+		it('returns true in JSON if text/plain and is palindrome', (done) => {
 			chai.request(app)
 				.post('/palindromes')
 				.set('content-type', 'text/plain')
 				.send('pop')
 				.end((end, res) => {
-					expect(res).to.have.status(201)
+					expect(res).to.have.status(200)
+					expect(res.body).to.equal(true)
+					done()
+				})
+		})
+
+		it('returns false in JSON if text/plain but not palindrome', (done) => {
+			chai.request(app)
+				.post('/palindromes')
+				.set('content-type', 'text/plain')
+				.send("Hey,yehh")
+				.end((end, res) => {
+					expect(res).to.have.status(200)
+					expect(res.body).to.equal(false)
 					done()
 				})
 		})
@@ -41,17 +53,6 @@ describe('Palindrome Server', () => {
 				.post('/palindromes')
 				.end((end, res) => {
 					expect(res).to.have.status(415)
-					done()
-				})
-		})
-
-		it('returns 422 Unprocessable Entry if text/plain but not palindrome', (done) => {
-			chai.request(app)
-				.post('/palindromes')
-				.set('content-type', 'text/plain')
-				.send("Hey,yehh")
-				.end((end, res) => {
-					expect(res).to.have.status(422)
 					done()
 				})
 		})
@@ -162,6 +163,7 @@ describe('Palindrome store', () => {
 
 	describe('getAll()', () => {
 		let store 
+
 		beforeEach(() => {
 			store = createStore(timeout, interval)
 		})
@@ -176,39 +178,31 @@ describe('Palindrome store', () => {
 			expect(store.getAll()).to.eql([])
 			done()
 		})
-
-		it('stores up to 10 elements and pops oldest element if limit reached', (done) => {
-			store.add('Tobepopebot')
-			for (var i = 10; i >= 1; i--) {
-				store.add('elemele')
-			}
-			expect(store.getAll().length).to.be.equal(10)
-			done()
-		})
 	})
 
 	describe('timeout of elements in store', () => {
 		let store 
+
 		beforeEach(() => {
-			this.clock = sinon.useFakeTimers();
+			this.clock = sinon.useFakeTimers()
 			store = createStore(timeout, interval)
 		})
 
 		afterEach(() => {
-			this.clock.restore();
+			this.clock.restore()
 		})
 
 		it('keeps elements for as long as the timeout passed into the store', (done) => {
 			let stub = sinon.stub(store, "currentDate")
 
-			stub.callsFake(() => { return new Date(0) });
+			stub.callsFake(() => { return new Date(0) })
 			
 			store.add('aa')
 			expect(store.getAll()).to.eql([
 				{"data": "aa", "createdAt": new Date(0)}
 			])
 
-			stub.callsFake(() => { return new Date(1000) });
+			stub.callsFake(() => { return new Date(1000) })
 			this.clock.tick(1000)
 			
 			store.add('bb')
@@ -217,14 +211,14 @@ describe('Palindrome store', () => {
 				{"data": "bb", "createdAt": new Date(1000)}
 			])
 			
-			stub.callsFake(() => { return new Date(2000) });
+			stub.callsFake(() => { return new Date(2000) })
 			this.clock.tick(1000)
 
 			expect(store.getAll()).to.eql([
 				{"data": "bb", "createdAt": new Date(1000)}
 			])
 
-			stub.callsFake(() => { return new Date(3000) });
+			stub.callsFake(() => { return new Date(3000) })
 			this.clock.tick(1000)
 
 			expect(store.getAll()).to.eql([])
