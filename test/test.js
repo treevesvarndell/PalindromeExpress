@@ -1,40 +1,235 @@
 'use strict'
 
-const chai = require('chai');
-const chaiHttp = require('chai-http');
-const app = require('../src/app');
+const chai = require('chai')
+const chaiHttp = require('chai-http')
+const sinon = require('sinon')
+const eventually = require('mocha-eventually')
+const shallowDeepEqual = require('chai-shallow-deep-equal')
 
 const expect = chai.expect;
 
-chai.use(chaiHttp);
+chai.use(chaiHttp)
+chai.use(shallowDeepEqual)
 
+const createServer = require('../src/server').createServer
 
-describe('Palindrome app', () => {
+const interval = 1000
+const timeout = 2000 
 
-	//empty chars
-	//weird chars (make an array of types)
-
-	//limit of 10 elements
-	//timout on the elements settable and tested
+describe('Palindrome Server', () => {
+	let app = createServer(timeout, interval)
+	app.listen(8001)
 	
+	describe('POST /palindromes', () => {
+		beforeEach(() => {
+			app.store.clearAll()
+		})
+		
+		it('returns 201 Created if text/plain and is palindrome', (done) => {
+			chai.request(app)
+				.post('/palindromes')
+				.set('content-type', 'text/plain')
+				.send('pop')
+				.end((end, res) => {
+					expect(res).to.have.status(201)
+					done()
+				})
+		})
 
-	it('returns 415 Unsupported Media Type if not text/plain', (done) => {
-		chai.request(app)
-			.post('/palindromes')
-			.end((end, res) => {
-				expect(res).to.have.status(415);
-				done();
-			});
-	});
+		it('returns 415 Unsupported Media Type if not text/plain', (done) => {
+			chai.request(app)
+				.post('/palindromes')
+				.end((end, res) => {
+					expect(res).to.have.status(415)
+					done()
+				})
+		})
 
-	it('returns 422 Unprocessable Entry if text/plain but not palindrome', (done) => {
-		chai.request(app)
-			.post('/palindromes')
-			.set('content-type', 'text/plain')
-			.send('notpalindrome')
-			.end((end, res) => {
-				expect(res).to.have.status(422);
-				done();
-			});
-	});
-});
+		it('returns 422 Unprocessable Entry if text/plain but not palindrome', (done) => {
+			chai.request(app)
+				.post('/palindromes')
+				.set('content-type', 'text/plain')
+				.send("Hey,yehh")
+				.end((end, res) => {
+					expect(res).to.have.status(422)
+					done()
+				})
+		})
+	})
+
+	describe('GET /palindromes', () => {
+		beforeEach(() => {
+			app.store.clearAll()
+		})
+
+		it('returns empty array when initialised', (done) => {
+			chai.request(app)
+				.get('/palindromes')
+				.end((end, res) => {
+					expect(res.body).to.eql([])
+					done()
+				})
+		})
+
+		it('returns a palindrome when one present', (done) => {
+			app.store.add("Hey,yeh")
+
+			chai.request(app)
+				.get('/palindromes')
+				.end((end, res) => {
+					expect(res.body).to.eql(['Hey,yeh'])
+					done()
+				})
+		})
+
+		it('returns multiple elements as list when present in store', (done) => {
+			app.store.add("1Hey,yeh1")
+			app.store.add("2Hey,yeh2")
+			app.store.add("3Hey,yeh3")
+			
+			chai.request(app)
+				.get('/palindromes')
+				.end((end, res) => {
+					expect(res.body).to.eql([
+						'1Hey,yeh1',
+						'2Hey,yeh2',
+						'3Hey,yeh3'
+					])
+					done()
+				})
+		})
+	})
+})
+
+describe('Palindrome store', () => {
+
+	const createStore = require('../src/palindromes').createStore
+
+	describe('add()', () => {
+		let store = createStore(timeout, interval)
+		
+		beforeEach(() => {
+			store.clearAll()
+		})
+
+		it('returns true if a palindrome two chars or more', (done) => {
+			expect(store.add('aa')).to.be.equal(true)
+			done()
+		})
+
+		it('returns false if less than two chars', (done) => {
+			expect(store.add('a')).to.be.equal(false)
+			done()
+		})
+
+		it('returns false if not a palindrome', (done) => {
+			expect(store.add('ab')).to.be.equal(false)
+			done()
+		})
+
+		it('ignores all other chars other than alphanumerical', (done) => {
+			expect(store.add("a!!''%%%%''!!a)")).to.be.equal(true)
+			expect(store.add("a!!''%%b%%''!!a)")).to.be.equal(true)
+			expect(store.add("!!''%%''!!)")).to.be.equal(false)
+			done()
+		})
+
+		it('ignores case', (done) => {
+			expect(store.add("aazbaABZAA)")).to.be.equal(true)
+			done()
+		})
+
+		it('adds up to 10 elements and pops oldest element if limit reached', (done) => {
+			store.add('Tobepopebot')
+			for (var i = 0; i <= 9; i++) {
+				store.add(`${i}elemele${i}`)
+			}
+			expect(store.getAll()).to.shallowDeepEqual([
+				{"data": "0elemele0"},
+				{"data": "1elemele1"},
+				{"data": "2elemele2"},
+				{"data": "3elemele3"},
+				{"data": "4elemele4"},
+				{"data": "5elemele5"},
+				{"data": "6elemele6"},
+				{"data": "7elemele7"},
+				{"data": "8elemele8"},
+				{"data": "9elemele9"}
+			])
+			done()
+		})
+	})
+
+	describe('getAll()', () => {
+		let store 
+		beforeEach(() => {
+			store = createStore(timeout, interval)
+		})
+
+		it('returns an empty array if there are no elements stored', (done) => {
+			expect(store.getAll()).to.eql([])
+			done()
+		})
+
+		it('doesnt store an element if it is not a palindrome', (done) => {
+			store.add('not a tonne')
+			expect(store.getAll()).to.eql([])
+			done()
+		})
+
+		it('stores up to 10 elements and pops oldest element if limit reached', (done) => {
+			store.add('Tobepopebot')
+			for (var i = 10; i >= 1; i--) {
+				store.add('elemele')
+			}
+			expect(store.getAll().length).to.be.equal(10)
+			done()
+		})
+	})
+
+	describe('timeout of elements in store', () => {
+		let store 
+		beforeEach(() => {
+			this.clock = sinon.useFakeTimers();
+			store = createStore(timeout, interval)
+		})
+
+		afterEach(() => {
+			this.clock.restore();
+		})
+
+		it('keeps elements for as long as the timeout passed into the store', (done) => {
+			let stub = sinon.stub(store, "currentDate")
+
+			stub.callsFake(() => { return new Date(0) });
+			
+			store.add('aa')
+			expect(store.getAll()).to.eql([
+				{"data": "aa", "createdAt": new Date(0)}
+			])
+
+			stub.callsFake(() => { return new Date(1000) });
+			this.clock.tick(1000)
+			
+			store.add('bb')
+			expect(store.getAll()).to.eql([
+				{"data": "aa", "createdAt": new Date(0)}, 
+				{"data": "bb", "createdAt": new Date(1000)}
+			])
+			
+			stub.callsFake(() => { return new Date(2000) });
+			this.clock.tick(1000)
+
+			expect(store.getAll()).to.eql([
+				{"data": "bb", "createdAt": new Date(1000)}
+			])
+
+			stub.callsFake(() => { return new Date(3000) });
+			this.clock.tick(1000)
+
+			expect(store.getAll()).to.eql([])
+
+			done()
+		})
+	})
+})
