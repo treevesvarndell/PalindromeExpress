@@ -14,5 +14,9 @@ An endpoint that returns a list of the last 10 palindromes the system has receiv
 
 
 ### How to run
-- Start the app by installing yarn locally and running "yarn start"
-- Test the app by installing yarn and running "yarn test"
+
+Install yarn for simplest process
+
+- Navigate to root folder
+- Start app - `yarn start` or `node src/app.js`
+- Test app - `yarn test` or `mocha test/test.js`
